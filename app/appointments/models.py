@@ -1,5 +1,5 @@
 from django.db import models
-from users.models import Doctor,Patient
+from users.models import Doctor,Patient, User
 
 
 # Create your models here.
@@ -10,9 +10,10 @@ class Appointment(models.Model):
     time = models.TimeField()
     status = models.CharField(
         max_length=20,
-        choices=[('Scheduled', 'Scheduled'), ('Completed', 'Completed'), ('Cancelled', 'Cancelled')]
+        choices=[('Pending', 'Pending'),('Confirmed', 'Confirmed'),('Rejected', 'Rejected'), ('Completed', 'Completed'), ('Cancelled', 'Cancelled')],
+        default='Pending'
     )
-    qr_code_data = models.TextField()
+    qr_code_data = models.TextField(blank=True)
     
     def __str__(self):
         return f"{self.date} - {self.time} | {self.doctor} with {self.patient}"
