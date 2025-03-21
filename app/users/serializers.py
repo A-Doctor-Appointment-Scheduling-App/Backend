@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Doctor, Patient
+from .models import Doctor, Patient, Clinic
 
 class DoctorRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
@@ -28,3 +28,8 @@ class PatientRegistrationSerializer(serializers.ModelSerializer):
 class UserLoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
+
+class ClinicSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Clinic
+        fields = ['name', 'address', 'location']

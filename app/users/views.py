@@ -4,7 +4,8 @@ from rest_framework import status
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from .serializers import DoctorRegistrationSerializer, PatientRegistrationSerializer, UserLoginSerializer
-
+from .serializers import ClinicSerializer
+from .models import Clinic
 @api_view(['POST'])
 def doctor_register_view(request):
     serializer = DoctorRegistrationSerializer(data=request.data)
@@ -37,4 +38,13 @@ def login_view(request):
                 'role': role
             })
         return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+def create_clinic(request):
+    serializer = ClinicSerializer(data=request.data)
+    if serializer.is_valid():
+        clinic = serializer.save()
+        return Response(ClinicSerializer(clinic).data, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
