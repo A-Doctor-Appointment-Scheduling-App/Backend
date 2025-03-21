@@ -8,7 +8,21 @@ from django.http import FileResponse
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from io import BytesIO
-
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from io import BytesIO
+from .models import Prescription
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch, cm
+from reportlab.lib import colors
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+from io import BytesIO
+from django.conf import settings
+import os
+from datetime import datetime, timedelta
 @api_view(['POST'])
 def create_prescription(request):
     serializer = PrescriptionSerializer(data=request.data)
@@ -26,22 +40,19 @@ def get_prescription_by_id(request, pk):
     except Prescription.DoesNotExist:
         return Response({'error': 'Prescription not found'}, status=status.HTTP_404_NOT_FOUND)
 
-from reportlab.lib.pagesizes import letter
-from reportlab.pdfgen import canvas
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
-from io import BytesIO
-from .models import Prescription
+
 
 def generate_prescription_pdf(prescription_id):
     """
-    Generates a professionally styled PDF prescription document.
+    Generates an elegant and beautifully styled PDF prescription document following Algerian standards.
     """
-    from reportlab.lib.pagesizes import letter
+    from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.lib.units import inch, cm
+    from reportlab.lib.units import inch, cm, mm
     from reportlab.lib import colors
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, KeepTogether
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
     from io import BytesIO
     from django.conf import settings
     import os
@@ -51,19 +62,32 @@ def generate_prescription_pdf(prescription_id):
     prescription = Prescription.objects.get(pk=prescription_id)
     patient = prescription.appointment.patient
     doctor = prescription.appointment.doctor
+    clinic = doctor.clinic
 
     # Create a file-like buffer to receive PDF data
     buffer = BytesIO()
 
-    # Set up document with margins
+    # Set up document with margins (A4 is more common in Algeria than US letter)
     doc = SimpleDocTemplate(
         buffer,
-        pagesize=letter,
-        rightMargin=72,
-        leftMargin=72,
-        topMargin=72,
-        bottomMargin=72
+        pagesize=A4,
+        rightMargin=2*cm,
+        leftMargin=2*cm,
+        topMargin=2*cm,
+        bottomMargin=2*cm
     )
+    
+    # Try to register custom fonts if available
+    try:
+        # Elegant fonts - adjust paths to your actual font locations
+        font_dir = os.path.join(settings.BASE_DIR, 'static', 'fonts')
+        pdfmetrics.registerFont(TTFont('Montserrat', os.path.join(font_dir, 'Montserrat-Regular.ttf')))
+        pdfmetrics.registerFont(TTFont('Montserrat-Bold', os.path.join(font_dir, 'Montserrat-Bold.ttf')))
+        pdfmetrics.registerFont(TTFont('Montserrat-Italic', os.path.join(font_dir, 'Montserrat-Italic.ttf')))
+        main_font = 'Montserrat'
+    except:
+        # Fallback to standard fonts if custom fonts not available
+        main_font = 'Helvetica'
     
     # Initialize story container for PDF elements
     story = []
@@ -71,203 +95,256 @@ def generate_prescription_pdf(prescription_id):
     # Define custom styles
     styles = getSampleStyleSheet()
     
-    # Modify existing Title style instead of adding a new one
-    title_style = styles['Title']
-    title_style.fontSize = 16
-    title_style.leading = 20
-    title_style.alignment = 1  # Center alignment
-    title_style.spaceAfter = 12
-    title_style.textColor = colors.HexColor('#2c3e50')
+    # Define color scheme for elegant design - using standard reportlab colors to avoid issues
+    primary_color = colors.navy
+    secondary_color = colors.dodgerblue
+    accent_color = colors.goldenrod
     
-    # Add other custom styles
-    styles.add(ParagraphStyle(
-        name='PrescriptionHeading',
-        fontSize=14,
-        leading=16,
-        spaceAfter=10,
-        textColor=colors.HexColor('#2980b9')
-    ))
-    styles.add(ParagraphStyle(
-        name='PrescriptionSubHeading',
-        fontSize=12,
+    # Header style
+    title_style = ParagraphStyle(
+        name='Title',
+        fontName=f'{main_font}-Bold' if main_font == 'Montserrat' else 'Helvetica-Bold',
+        fontSize=18,
+        leading=22,
+        alignment=1,  # Center alignment
+        spaceAfter=6,
+        textColor=primary_color
+    )
+    
+    # Doctor info style
+    doctor_style = ParagraphStyle(
+        name='DoctorInfo',
+        fontName=main_font,
+        fontSize=11,
         leading=14,
+        alignment=0,  # Left alignment
+        textColor=primary_color
+    )
+    
+    # Prescription heading style
+    prescription_heading_style = ParagraphStyle(
+        name='PrescriptionHeading',
+        fontName=f'{main_font}-Bold' if main_font == 'Montserrat' else 'Helvetica-Bold',
+        fontSize=16,
+        leading=18,
+        alignment=1,  # Center alignment
         spaceAfter=8,
-        textColor=colors.HexColor('#3498db')
-    ))
+        textColor=primary_color
+    )
     
-    # Also modify Normal style for consistency
-    normal_style = styles['Normal']
-    normal_style.fontSize = 10
-    normal_style.leading = 12
-    normal_style.spaceAfter = 6
+    # Normal text style
+    normal_style = ParagraphStyle(
+        name='Normal',
+        fontName=main_font,
+        fontSize=10,
+        leading=13,
+        spaceAfter=4
+    )
     
-    # Try to add a logo if available
+    # Medication name style
+    medication_name_style = ParagraphStyle(
+        name='MedicationName',
+        fontName=f'{main_font}-Bold' if main_font == 'Montserrat' else 'Helvetica-Bold',
+        fontSize=11,
+        leading=14,
+        textColor=secondary_color
+    )
+    
+    # Medication instructions style
+    medication_instructions_style = ParagraphStyle(
+        name='MedicationInstructions',
+        fontName=main_font,
+        fontSize=10,
+        leading=13,
+        leftIndent=0.6*cm
+    )
+    
+    # Header section with clinic logo if available
     try:
-        logo_path = os.path.join(settings.STATIC_ROOT, 'images/hospital_logo.png')
+        logo_path = os.path.join(settings.MEDIA_ROOT, 'clinic_logos', f'{clinic.id}_logo.png')
         if os.path.exists(logo_path):
-            logo = Image(logo_path, width=2*inch, height=1*inch)
+            logo = Image(logo_path, width=2*cm, height=2*cm)
+            logo.hAlign = 'LEFT'
             story.append(logo)
+            story.append(Spacer(1, 0.5*cm))
     except:
-        # Continue without logo if there's an issue
-        pass
+        pass  # Skip logo if not available
     
-    # Add clinic/hospital header
-    clinic_name = getattr(settings, 'CLINIC_NAME', 'Medical Clinic')
-    story.append(Paragraph(clinic_name, styles['Title']))
-    
-    clinic_address = getattr(settings, 'CLINIC_ADDRESS', '123 Healthcare Ave, Medical City')
-    clinic_contact = getattr(settings, 'CLINIC_CONTACT', 'Phone: (555) 123-4567')
-    
-    story.append(Paragraph(clinic_address, styles['Normal']))
-    story.append(Paragraph(clinic_contact, styles['Normal']))
-    story.append(Spacer(1, 0.5*cm))
-    
-    # Add a horizontal line
-    story.append(Paragraph("<hr width='100%'/>", styles['Normal']))
-    story.append(Spacer(1, 0.5*cm))
-    
-    # Prescription title and number
-    story.append(Paragraph(f"PRESCRIPTION #{prescription.id}", styles['PrescriptionHeading']))
-    story.append(Spacer(1, 0.5*cm))
-    
-    # Create a two-column table for patient and doctor info
-    data = [
-        ["PATIENT INFORMATION", "PRESCRIBING DOCTOR"],
-        [f"Name: {patient.first_name} {patient.last_name}", f"Name: Dr. {doctor.first_name} {doctor.last_name}"],
-        [f"ID: {patient.id}", f"License #: {getattr(doctor, 'license_number', 'N/A')}"],
-        [f"DOB: {getattr(patient, 'date_of_birth', 'N/A')}", f"Specialty: {getattr(doctor, 'specialty', 'N/A')}"]
+    # Doctor and clinic information at the top with elegant styling
+    # FIXED: Using standard color names instead of hexadecimal values
+    doctor_info = [
+        f"<b>Dr. {doctor.first_name} {doctor.last_name}</b>",
+        f"<i>{doctor.specialty}</i>",
+        f"<b>{clinic.name}</b>",
+        f"{clinic.location}",
+        f"Tél: {clinic.address}"  # Using address field for phone number
     ]
     
-    info_table = Table(data, colWidths=[doc.width/2.0-12, doc.width/2.0-12])
-    info_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (0, 0), colors.HexColor('#3498db')),
-        ('BACKGROUND', (1, 0), (1, 0), colors.HexColor('#3498db')),
-        ('TEXTCOLOR', (0, 0), (1, 0), colors.white),
-        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-        ('FONTNAME', (0, 0), (1, 0), 'Helvetica-Bold'),
-        ('BOTTOMPADDING', (0, 0), (1, 0), 6),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+    for line in doctor_info:
+        story.append(Paragraph(line, doctor_style))
+    
+    # Add elegant separator
+    story.append(Spacer(1, 1*cm))
+    
+    # Create an elegant separator line
+    separator = Table([['']], colWidths=[doc.width], rowHeights=[1])
+    separator.setStyle(TableStyle([
+        ('LINEABOVE', (0, 0), (-1, 0), 1, secondary_color),
+        ('LINEBELOW', (0, 0), (-1, 0), 0.5, accent_color),
     ]))
+    story.append(separator)
     
-    story.append(info_table)
-    story.append(Spacer(1, 0.5*cm))
+    # "ORDONNANCE" heading (French is common in Algeria for medical terms)
+    story.append(Spacer(1, 0.8*cm))
+    story.append(Paragraph("ORDONNANCE", prescription_heading_style))
+    story.append(Spacer(1, 0.6*cm))
     
-    # Prescription date and other details
+    # Create a table for patient information with elegant styling
     issue_date = prescription.issued_date
     if isinstance(issue_date, datetime):
-        issue_date_str = issue_date.strftime("%B %d, %Y")
-        valid_until = getattr(prescription, 'valid_until', 
-                          (issue_date + timedelta(days=30)).strftime("%B %d, %Y"))
+        issue_date_str = issue_date.strftime("%d/%m/%Y")  # DD/MM/YYYY format common in Algeria
     else:
-        # Handle case where issue_date might be a string
         issue_date_str = str(issue_date)
-        valid_until = getattr(prescription, 'valid_until', 'N/A')
-        
-    prescription_data = [
-        ["Date Issued:", issue_date_str],
-        ["Valid Until:", valid_until],
-        ["Prescription ID:", prescription.id]
+    
+    # Get patient date of birth with fallback
+    patient_dob = getattr(patient, 'date_of_birth', 'Non précisée')
+    if isinstance(patient_dob, datetime):
+        patient_dob_str = patient_dob.strftime("%d/%m/%Y")
+    else:
+        patient_dob_str = str(patient_dob)
+    
+    # Patient age calculation
+    patient_age = "N/A"
+    if isinstance(patient_dob, datetime):
+        today = datetime.now()
+        patient_age = today.year - patient_dob.year - ((today.month, today.day) < (patient_dob.month, patient_dob.day))
+    
+    # Patient information block with elegant styling
+    patient_data = [
+        ["Patient:", f"{patient.first_name} {patient.last_name}", "Date:", issue_date_str],
+        ["Né(e) le:", patient_dob_str, "Age:", f"{patient_age} ans"],
+        ["N° dossier:", str(patient.id), "", ""]
     ]
     
-    prescription_table = Table(prescription_data, colWidths=[doc.width/4.0, doc.width*3/4.0-24])
-    prescription_table.setStyle(TableStyle([
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-        ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#f2f2f2')),
-        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+    patient_table = Table(patient_data, colWidths=[doc.width*0.15, doc.width*0.35, doc.width*0.15, doc.width*0.35])
+    patient_table.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+        ('ALIGN', (2, 0), (2, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (0, -1), f'{main_font}-Bold' if main_font == 'Montserrat' else 'Helvetica-Bold'),
+        ('FONTNAME', (2, 0), (2, -1), f'{main_font}-Bold' if main_font == 'Montserrat' else 'Helvetica-Bold'),
+        ('TEXTCOLOR', (0, 0), (0, -1), primary_color),
+        ('TEXTCOLOR', (2, 0), (2, -1), primary_color),
+        ('BACKGROUND', (0, 0), (-1, -1), colors.lightblue),  # Light blue background
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.white),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
     ]))
     
-    story.append(prescription_table)
+    story.append(patient_table)
     story.append(Spacer(1, 1*cm))
     
-    # Medications section
-    story.append(Paragraph("PRESCRIBED MEDICATIONS", styles['PrescriptionHeading']))
+    # Prescription symbol with elegant styling
+    # FIXED: Using style-based coloring instead of inline HTML
+    rx_symbol_style = ParagraphStyle(
+        name='RxSymbol',
+        fontName=f'{main_font}-Bold' if main_font == 'Montserrat' else 'Helvetica-Bold',
+        fontSize=20,
+        leading=24,
+        textColor=accent_color
+    )
+    story.append(Paragraph("℞", rx_symbol_style))
     story.append(Spacer(1, 0.3*cm))
     
-    # Create medication table headers
-    medication_data = [["Medication", "Dosage", "Frequency", "Duration", "Instructions"]]
+    # Medications with elegant styling
+    for i, medication in enumerate(prescription.medications.all(), 1):
+        # Create a KeepTogether group for each medication to prevent splitting across pages
+        medication_group = []
+        
+        # Medication name and dosage
+        medication_group.append(Paragraph(
+            f"{i}. <b>{medication.name}</b> - {medication.dosage}", 
+            medication_name_style
+        ))
+        
+        # Dosage instructions with indent
+        medication_group.append(Paragraph(
+            f"{medication.frequency} - {medication.instructions}", 
+            medication_instructions_style
+        ))
+        
+        medication_group.append(Spacer(1, 0.5*cm))
+        story.append(KeepTogether(medication_group))
     
-    # Add medication rows
-    for medication in prescription.medications.all():
-        medication_data.append([
-            medication.name,
-            medication.dosage,
-            medication.frequency,
-            getattr(medication, 'duration', 'As needed'),
-            medication.instructions
-        ])
+    # If no medications exist
+    if not prescription.medications.exists():
+        story.append(Paragraph("Aucun médicament prescrit", normal_style))
+        story.append(Spacer(1, 0.5*cm))
     
-    # If no medications exist, add a placeholder row
-    if len(medication_data) == 1:
-        medication_data.append(["No medications prescribed", "", "", "", ""])
+    # Add an elegant separator before signature
+    story.append(Spacer(1, 0.5*cm))
+    story.append(separator)
+    story.append(Spacer(1, 0.8*cm))
     
-    # Create the medication table
-    col_widths = [doc.width*0.20, doc.width*0.15, doc.width*0.15, doc.width*0.15, doc.width*0.35-24]
-    medication_table = Table(medication_data, colWidths=col_widths)
-    
-    # Style the medication table
-    table_style = TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#3498db')),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-        ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('WORDWRAP', (4, 1), (4, -1), True),
-    ])
-    
-    # Add zebra striping for better readability
-    for i in range(1, len(medication_data)):
-        if i % 2 == 1:
-            table_style.add('BACKGROUND', (0, i), (-1, i), colors.HexColor('#f2f2f2'))
-    
-    medication_table.setStyle(table_style)
-    story.append(medication_table)
-    
-    # Add notes section
-    story.append(Spacer(1, 1*cm))
-    story.append(Paragraph("NOTES AND SPECIAL INSTRUCTIONS:", styles['PrescriptionSubHeading']))
-    
-    notes = getattr(prescription, 'notes', '')
-    if not notes:
-        notes = "No special instructions."
-    
-    story.append(Paragraph(notes, styles['Normal']))
-    
-    # Add signature section
-    story.append(Spacer(1, 2*cm))
+    # Date and doctor signature with elegant styling
+    city = getattr(clinic, 'city', 'Alger')
     
     signature_data = [
+        [f"Fait à {city}, le {issue_date_str}", ""],
+        ["", "Signature et cachet du médecin"],
         ["", ""],
-        ["______________________________", "______________________________"],
-        ["Doctor's Signature", "Date"]
+        ["", ""],
+        ["", ""],
+        ["", f"Dr. {doctor.first_name} {doctor.last_name}"]
     ]
     
-    signature_table = Table(signature_data, colWidths=[doc.width/2.0-12, doc.width/2.0-12])
+    # Try to add doctor signature image if available
+    try:
+        signature_path = os.path.join(settings.MEDIA_ROOT, 'signatures', f'{doctor.id}_signature.png')
+        if os.path.exists(signature_path):
+            signature = Image(signature_path, width=3*cm, height=1.5*cm)
+            signature.hAlign = 'CENTER'
+            signature_data[3][1] = signature
+    except:
+        pass  # Skip signature image if not available
+    
+    signature_table = Table(signature_data, colWidths=[doc.width/2.0, doc.width/2.0])
     signature_table.setStyle(TableStyle([
-        ('ALIGN', (0, 1), (0, 1), 'CENTER'),
-        ('ALIGN', (1, 1), (1, 1), 'CENTER'),
-        ('ALIGN', (0, 2), (0, 2), 'CENTER'),
-        ('ALIGN', (1, 2), (1, 2), 'CENTER'),
-        ('FONTNAME', (0, 2), (1, 2), 'Helvetica-Oblique'),
-        ('TEXTCOLOR', (0, 2), (1, 2), colors.grey),
+        ('ALIGN', (0, 0), (0, 0), 'LEFT'),
+        ('ALIGN', (1, 1), (1, -1), 'CENTER'),
+        ('VALIGN', (1, 2), (1, 4), 'MIDDLE'),
+        ('TEXTCOLOR', (0, 0), (0, 0), primary_color),
+        ('TEXTCOLOR', (1, 1), (1, 1), primary_color),
+        ('FONTNAME', (1, 1), (1, 1), f'{main_font}-Bold' if main_font == 'Montserrat' else 'Helvetica-Bold'),
+        ('FONTNAME', (1, -1), (1, -1), f'{main_font}-Bold' if main_font == 'Montserrat' else 'Helvetica-Bold'),
     ]))
     
     story.append(signature_table)
     
-    # Add footer with disclaimer
-    story.append(Spacer(1, 2*cm))
-    footer_text = "This prescription is only valid if signed by the prescribing doctor. " \
-                 "Please consult your pharmacist or doctor if you have any questions regarding this prescription."
+    # Add footer with prescription validity in an elegant box
+    story.append(Spacer(1, 1.5*cm))
     
-    story.append(Paragraph(footer_text, ParagraphStyle(
+    footer_text = "Cette ordonnance est valable pour une durée d'un mois à compter de sa date d'émission."
+    
+    footer_style = ParagraphStyle(
         name='Footer',
-        parent=styles['Normal'],
+        fontName=main_font,
         fontSize=8,
-        textColor=colors.grey,
-        alignment=1  # Center alignment
-    )))
+        leading=10,
+        alignment=1,  # Center alignment
+        textColor=primary_color
+    )
+    
+    footer_table = Table([[Paragraph(footer_text, footer_style)]], colWidths=[doc.width])
+    footer_table.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('BACKGROUND', (0, 0), (-1, -1), colors.lightcyan),  # Very light background
+        ('BOX', (0, 0), (-1, -1), 0.5, secondary_color),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+    ]))
+    
+    story.append(footer_table)
     
     # Build the PDF
     doc.build(story)
