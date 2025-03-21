@@ -22,15 +22,22 @@ class PatientAppointmentsView(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Patient.DoesNotExist:
             return Response({"error": "Patient not found"}, status=status.HTTP_404_NOT_FOUND)
+from notifications.views import send_notification_to_patient
+
 class BookAppointmentView(APIView):
     def post(self, request):
-        # Deserialize and validate the input data
         serializer = AppointmentCreateSerializer(data=request.data)
         if serializer.is_valid():
             # Save the appointment
-            serializer.save()
+            appointment = serializer.save()
+
+            # Send a reminder notification to the patient
+            message = f"Reminder: You have an appointment with Dr. {appointment.doctor.first_name} {appointment.doctor.last_name} on {appointment.date} at {appointment.time}."
+            send_notification_to_patient(appointment.patient, message)
+
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
 
 '''The doctor confirms an appointement with the call to this function'''
 @csrf_exempt
@@ -79,6 +86,7 @@ def cancel_appointment(request, appointment_id):
 
 
 '''The patient reschedules an appointement with the call to this function'''
+# appointments/views.py
 @csrf_exempt
 def reschedule_appointment(request, appointment_id, new_date, new_time):
     if request.method == "POST":
@@ -92,12 +100,13 @@ def reschedule_appointment(request, appointment_id, new_date, new_time):
         if new_time:
             appointment.time = new_time
 
-        appointment.status = "Pending" '''needs to be reconfirmed from the doctor'''
+        appointment.status = "Pending"  # Needs to be reconfirmed by the doctor
         appointment.save()
-        send_notification_to_patient(appointment.doctor, f"Mr. {appointment.patient.first_name} {appointment.patient.last_name} rescheduled the appointement to {appointment.date} {appointment.time}.")
+
+        # Send a reminder notification to the patient
+        message = f"Reminder: Your appointment with Dr. {appointment.doctor.first_name} {appointment.doctor.last_name} has been rescheduled to {appointment.date} at {appointment.time}."
+        send_notification_to_patient(appointment.patient, message)
 
         return JsonResponse({"message": "Appointment rescheduled successfully."})
 
     return JsonResponse({"error": "Invalid request method."}, status=405)
-
-
