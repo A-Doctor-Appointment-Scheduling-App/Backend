@@ -7,4 +7,6 @@ urlpatterns = [
     path('login/', login_view, name='login'),
     path('clinics/create/', create_clinic, name='create-clinic'),
         path('dashboard/', dashboard, name='dashboard'),
+            path('doctors/', doctor_list, name='doctor_list'),
+    path('doctors/<int:doctor_id>/', doctor_details, name='doctor_details'),
 ]
