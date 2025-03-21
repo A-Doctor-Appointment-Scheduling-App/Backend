@@ -6,6 +6,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from .serializers import DoctorRegistrationSerializer, PatientRegistrationSerializer, UserLoginSerializer
 from .serializers import ClinicSerializer
 from .models import Clinic
+from django.shortcuts import render
+
 @api_view(['POST'])
 def doctor_register_view(request):
     serializer = DoctorRegistrationSerializer(data=request.data)
@@ -48,3 +50,13 @@ def create_clinic(request):
         clinic = serializer.save()
         return Response(ClinicSerializer(clinic).data, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+def dashboard(request):
+    # Fetch user-specific data here
+    user = request.user
+    context = {
+        'user': user,
+        # Add more context data as needed
+    }
+    return render(request, 'users/dashboard.html', context)
