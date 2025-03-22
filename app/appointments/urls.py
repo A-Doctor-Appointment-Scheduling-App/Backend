@@ -1,9 +1,8 @@
-<<<<<<< HEAD
 # appointments/urls.py
 from django.urls import path, include
 from django.contrib import admin
 from .views import PatientAppointmentsView, BookAppointmentView
-from .views import BookAppointmentView
+from .views import *
 from .views import confirm_appointment, reject_appointment,complete_appointment,cancel_appointment,reschedule_appointment
 
 
@@ -18,14 +17,7 @@ urlpatterns = [
     path("<int:appointment_id>/reschedule/<str:new_date>/<str:new_time>/", reschedule_appointment,name="reschedule_appointment"),
     path('admin/', admin.site.urls),
     path('api/notifications/', include('notifications.urls')), 
-]
-=======
-from django.urls import path
-from .views import confirm_appointment, scan_qr_code, appointment_details
-
-urlpatterns = [
     path('<int:appointment_id>/', appointment_details, name='appointment_details'),
     path('confirm/<int:appointment_id>/', confirm_appointment, name='confirm_appointment'),
     path('scan/<int:appointment_id>/', scan_qr_code, name='scan_qr_code'),
 ]
->>>>>>> djihene

@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 # appointments/serializers.py
 from rest_framework import serializers
 from .models import Appointment
@@ -16,15 +16,3 @@ class AppointmentCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Appointment
         fields = ['doctor_id', 'patient_id', 'date', 'time', 'status', 'qr_code_data']
-=======
-from rest_framework import serializers
-from .models import Appointment, Doctor, Patient
-
-class AppointmentSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Appointment
-        fields = ['doctor', 'patient', 'date', 'time', 'status', 'qr_code_data']
-
-    def validate(self, data):
-        return data
->>>>>>> djihene
