@@ -1,13 +1,10 @@
 # appointments/models.py
 from django.db import models
-<<<<<<< HEAD
-from users.models import Doctor, Patient, User
-=======
-from users.models import Doctor,Patient
+from users.models import Doctor,Patient, User
 import qrcode
 from io import BytesIO
 from django.core.files.base import ContentFile
->>>>>>> djihene
+
 
 class Appointment(models.Model):
     doctor = models.ForeignKey("users.Doctor", on_delete=models.CASCADE)
@@ -16,17 +13,8 @@ class Appointment(models.Model):
     time = models.TimeField()
     status = models.CharField(
         max_length=20,
-<<<<<<< HEAD
         choices=[('Pending', 'Pending'), ('Confirmed', 'Confirmed'), ('Rejected', 'Rejected'), ('Completed', 'Completed'), ('Cancelled', 'Cancelled')],
         default='Pending'
-    )
-    qr_code_data = models.TextField(blank=True)
-
-    def __str__(self):
-        return f"{self.date} - {self.time} | {self.doctor} with {self.patient}"
-=======
-        choices=[('Scheduled', 'Scheduled'), ('Completed', 'Completed'), ('Cancelled', 'Cancelled')],
-        default="Scheduled"
     )
     qr_code = models.ImageField(upload_to="qr_codes/", blank=True, null=True)  # Store QR Code Image
 
@@ -44,11 +32,10 @@ class Appointment(models.Model):
         if self.status == "Scheduled" and not self.qr_code:
             self.generate_qr_code()
         super().save(*args, **kwargs)
-
+    
     def __str__(self):
         return f"{self.date} - {self.time} | {self.doctor} with {self.patient}"
-
->>>>>>> djihene
+    
 
 class Reminder(models.Model):
     appointment = models.ForeignKey(Appointment, on_delete=models.CASCADE)
