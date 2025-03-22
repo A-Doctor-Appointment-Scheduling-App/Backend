@@ -6,6 +6,7 @@ from io import BytesIO
 from django.core.files.base import ContentFile
 
 
+# Create your models here.
 class Appointment(models.Model):
     doctor = models.ForeignKey("users.Doctor", on_delete=models.CASCADE)
     patient = models.ForeignKey("users.Patient", on_delete=models.CASCADE)
