@@ -17,7 +17,7 @@ class Appointment(models.Model):
     def __str__(self):
         return f"{self.date} - {self.time} | {self.doctor} with {self.patient}"
 
-class Reminder(models.Model):  # Ensure this is correctly defined
+class Reminder(models.Model):
     appointment = models.ForeignKey(Appointment, on_delete=models.CASCADE)
     scheduled_time = models.DateTimeField()
     message = models.TextField()

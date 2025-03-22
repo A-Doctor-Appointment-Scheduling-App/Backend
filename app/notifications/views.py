@@ -4,6 +4,7 @@ from .models import Notification
 from django.views.decorators.csrf import csrf_exempt
 from datetime import datetime, timedelta
 from appointments.models import Appointment
+from notifications.models import Notification
 # Create your views here.
 
 '''A function to create a notification'''
@@ -52,14 +53,29 @@ def mark_notification_as_read(request, notification_id):
     notification.save()
     return JsonResponse({"message": "Notification marked as read."})
 
-@csrf_exempt
+
 def send_appointment_reminders():
-    # Fetch appointments that are scheduled in the next 24 hours
     now = datetime.now()
-    reminder_time = now + timedelta(hours=24)
-    appointments = Appointment.objects.filter(date=reminder_time.date(), time__lte=reminder_time.time(), status="Confirmed")
+    reminder_time = now + timedelta(hours=24)  # 24 hours before the appointment
+
+    # Fetch appointments that are 24 hours away and are confirmed
+    appointments = Appointment.objects.filter(
+        date=reminder_time.date(),
+        time__lte=reminder_time.time(),
+        status="Confirmed"  # Only send reminders for confirmed appointments
+    )
 
     for appointment in appointments:
-        # Send a reminder notification to the patient
-        message = f"Reminder: You have an appointment with Dr. {appointment.doctor.first_name} {appointment.doctor.last_name} on {appointment.date} at {appointment.time}."
-        send_notification_to_patient(appointment.patient, message)
+        # Check if a notification for this appointment already exists
+        existing_notification = Notification.objects.filter(
+            recipient_patient=appointment.patient,
+            message__contains=f"Reminder: You have an appointment with Dr. {appointment.doctor.first_name} {appointment.doctor.last_name} on {appointment.date} at {appointment.time}."
+        ).exists()
+
+        # If no notification exists, create a new one
+        if not existing_notification:
+            message = f"Reminder: You have an appointment with Dr. {appointment.doctor.first_name} {appointment.doctor.last_name} on {appointment.date} at {appointment.time}."
+            Notification.objects.create(
+                recipient_patient=appointment.patient,
+                message=message
+            )
