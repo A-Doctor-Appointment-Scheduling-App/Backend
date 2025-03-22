@@ -40,8 +40,52 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'users',
     'appointments',
+    'notifications',
     'prescriptions', 
+    'django_cron',
+     'django.contrib.sites',
+       'rest_framework',
+    'rest_framework_simplejwt',
+    'oauthlib',
+    'social_django',
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.google', 
 ]
+CRON_CLASSES = [
+    'notifications.cron.SendRemindersCronJob',
+]
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+}
+
+AUTHENTICATION_BACKENDS = (
+    'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend',
+
+)
+
+AUTH_USER_MODEL = 'users.User'
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+      'APP': {
+        'client_id': '873784815709-450vlodet7bvpe1ds7ibn8fgiv2e7ii0.apps.googleusercontent.com',
+        'secret': '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',
+        'key': ''
+    }
+}
+}
+
+SITE_ID = 1
+LOGIN_URL = 'login'
+LOGIN_REDIRECT_URL = 'dashboard'
+LOGOUT_URL = 'logout'
+ACCOUNT_LOGOUT_REDIRECT_URL = 'login'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -51,7 +95,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'allauth.account.middleware.AccountMiddleware',  # Add this line
+    'allauth.account.middleware.AccountMiddleware',
 ]
 
 ROOT_URLCONF = 'app.urls'
