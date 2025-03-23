@@ -11,8 +11,8 @@ class Appointment(models.Model):
     time = models.TimeField()
     status = models.CharField(
         max_length=20,
-        choices=[('Scheduled', 'Scheduled'), ('Completed', 'Completed'), ('Cancelled', 'Cancelled')],
-        default="Scheduled"
+        choices=[('Pending', 'Pending'), ('Confirmed', 'Confirmed'), ('Rejected', 'Rejected'), ('Completed', 'Completed'), ('Cancelled', 'Cancelled')],
+        default='Pending'
     )
     qr_code = models.ImageField(upload_to="qr_codes/", blank=True, null=True)  # Store QR Code Image
 
@@ -27,7 +27,7 @@ class Appointment(models.Model):
 
     def save(self, *args, **kwargs):
         """Automatically generate QR code when the appointment is confirmed."""
-        if self.status == "Scheduled" and not self.qr_code:
+        if self.status == "Pending" and not self.qr_code:
             self.generate_qr_code()
         super().save(*args, **kwargs)
 

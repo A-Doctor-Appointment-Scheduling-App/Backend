@@ -50,8 +50,12 @@ INSTALLED_APPS = [
     'allauth.account',
     'allauth.socialaccount',
     'allauth.socialaccount.providers.google',
+      'notifications',
+    'django_cron', 
 ]
-
+CRON_CLASSES = [
+    'notifications.cron.SendRemindersCronJob',
+]
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
