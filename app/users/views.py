@@ -98,3 +98,32 @@ def doctor_details(request, doctor_id):
     }
     return JsonResponse(data)
 
+def patient_list(request):
+    patients = Patient.objects.all()
+    data = [
+        {
+            "id": patient.id,
+            "first_name": patient.first_name,
+            "last_name": patient.last_name,
+            "email": patient.email,
+            "phone_number": patient.phone_number,
+            "address": patient.address,
+            "date_of_birth": patient.date_of_birth
+        }
+        for patient in patients
+    ]
+    return JsonResponse(data, safe=False)
+
+def patient_details(request, patient_id):
+    patient = get_object_or_404(Patient, id=patient_id)
+    data = {
+        "id": patient.id,
+        "first_name": patient.first_name,
+        "last_name": patient.last_name,
+        "email": patient.email,
+        "phone_number": patient.phone_number,
+        "address": patient.address,
+        "date_of_birth": patient.date_of_birth
+    }
+    return JsonResponse(data)
+
