@@ -22,7 +22,15 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from io import BytesIO
 from django.conf import settings
 import os
-from datetime import datetime, timedelta
+
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from .models import Appointment
+from users.models import Patient,Doctor
+
+
 @api_view(['POST'])
 def create_prescription(request):
     serializer = PrescriptionSerializer(data=request.data)
@@ -40,6 +48,27 @@ def get_prescription_by_id(request, pk):
     except Prescription.DoesNotExist:
         return Response({'error': 'Prescription not found'}, status=status.HTTP_404_NOT_FOUND)
 
+
+class DoctorPrescriptionsView(APIView):
+    def get(self, request, doctor_id):
+        try:
+            doctor = Doctor.objects.get(id=doctor_id)
+            prescriptions = Prescription.objects.filter(appointment__doctor=doctor)
+            serializer = PrescriptionSerializer(prescriptions, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Doctor.DoesNotExist:
+            return Response({"error": "Doctor not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+
+class PatientPrescriptionsView(APIView):
+    def get(self, request, patient_id):
+        try:
+            patient = Patient.objects.get(id=patient_id)
+            prescriptions = Prescription.objects.filter(appointment__patient=patient)
+            serializer = PrescriptionSerializer(prescriptions, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Patient.DoesNotExist:
+            return Response({"error": "Patient not found"}, status=status.HTTP_404_NOT_FOUND)
 
 
 def generate_prescription_pdf(prescription_id):

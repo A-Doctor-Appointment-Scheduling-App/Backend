@@ -9,11 +9,12 @@ from rest_framework.response import Response
 from rest_framework import status
 from .models import Appointment
 from .serializers import AppointmentCreateSerializer  # Updated import
-from users.models import Patient
+from users.models import Patient,Doctor
 from django.shortcuts import render,get_object_or_404
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from notifications.views import send_notification_to_doctor,send_notification_to_patient
+
 
 
 
@@ -59,7 +60,6 @@ def appointment_details(request, appointment_id):
 
 
 
-
 class PatientAppointmentsView(APIView):
     def get(self, request, patient_id):
         try:
@@ -72,7 +72,17 @@ class PatientAppointmentsView(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Patient.DoesNotExist:
             return Response({"error": "Patient not found"}, status=status.HTTP_404_NOT_FOUND)
-from notifications.views import send_notification_to_patient
+
+
+class DoctorAppointmentsView(APIView):
+    def get(self, request, doctor_id):
+        try:
+            doctor = Doctor.objects.get(id=doctor_id)
+            appointments = Appointment.objects.filter(doctor=doctor)
+            serializer = AppointmentCreateSerializer(appointments, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Doctor.DoesNotExist:
+            return Response({"error": "Doctor not found"}, status=status.HTTP_404_NOT_FOUND)
 
 class BookAppointmentView(APIView):
     def post(self, request):
@@ -97,21 +107,56 @@ def confirm_appointment_(request, appointment_id):
         appointment.status = "Confirmed"
         appointment.save()
 
-        send_notification_to_patient(appointment.patient, f"Your appointment with Dr. {appointment.doctor.first_name} {appointment.doctor.last_name} has been confirmed.")
+        notification_title = "Appointment Confirmed"
+        notification_message = f"Your appointment with Dr. {appointment.doctor.first_name} {appointment.doctor.last_name} has been confirmed."
+        
+        # Envoyer la notification avec titre
+        send_notification_to_patient(
+            appointment.patient, 
+            notification_message,
+            title=notification_title
+        )
+
 
         return JsonResponse({"message": "Appointment Confirmed successfully."})
     return JsonResponse({"error": "Invalid request method. Use POST."}, status=400)
     
 
 '''The doctor rejects an appointement with the call to this function'''
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
+import json
+
 @csrf_exempt
 def reject_appointment(request, appointment_id):
     if request.method == "POST":
         appointment = get_object_or_404(Appointment, id=appointment_id)
+        try:
+            data = json.loads(request.body)
+            reason = data.get("reason", "").strip()
+        except (json.JSONDecodeError, AttributeError):
+            return JsonResponse({"error": "Invalid JSON or missing 'reason' field"}, status=400)
+
+        if not reason:
+            return JsonResponse({"error": "A rejection reason is required."}, status=400)
+
         appointment.status = "Rejected"
         appointment.save()
-        send_notification_to_patient(appointment.patient, f"Your appointment with Dr. {appointment.doctor.first_name} {appointment.doctor.last_name} has been rejected.")
-        return JsonResponse({"message": "Appointment Rejected successfully."})
+
+        notification_title = "Appointment rejected"
+        message = (
+            f"Your appointment with Dr. {appointment.doctor.first_name} {appointment.doctor.last_name} "
+            f"has been rejected. Reason: {reason}"
+        )
+        send_notification_to_patient(
+            appointment.patient, 
+            message,
+            title=notification_title
+        )
+
+        return JsonResponse({"message": "Appointment rejected successfully."})
+
 
 
 '''The doctor completes an appointement with the call to this function'''
@@ -131,7 +176,10 @@ def cancel_appointment(request, appointment_id):
         appointment = get_object_or_404(Appointment, id=appointment_id)
         appointment.status = "Cancelled"
         appointment.save()
-        send_notification_to_doctor(appointment.doctor, f"Mr. {appointment.patient.first_name} {appointment.patient.last_name} cancelled his appointement.")
+       
+        notification_title = "Appointment cancelled"
+
+        send_notification_to_doctor(appointment.doctor, f"Mr. {appointment.patient.first_name} {appointment.patient.last_name} cancelled his appointement.",notification_title)
         return JsonResponse({"message": "Appointment cancelled successfully."})
 
 
@@ -153,10 +201,12 @@ def reschedule_appointment(request, appointment_id, new_date, new_time):
         appointment.status = "Pending"  # Needs to be reconfirmed by the doctor
         appointment.save()
 
-        # Send a reminder notification to the patient
-        message = f"Reminder: Your appointment with Dr. {appointment.doctor.first_name} {appointment.doctor.last_name} has been rescheduled to {appointment.date} at {appointment.time}."
-        send_notification_to_patient(appointment.patient, message)
 
+        notification_title = "Appointment rescheduling demand"
+        message = f"The appointment with {appointment.patient.first_name} {appointment.patient.last_name} has been rescheduled to {appointment.date} at {appointment.time}. Please review and confirm the new schedule."
+
+        send_notification_to_doctor(appointment.doctor,message,notification_title)
+        
         return JsonResponse({"message": "Appointment rescheduled successfully."})
 
     return JsonResponse({"error": "Invalid request method."}, status=405)

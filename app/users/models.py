@@ -43,7 +43,9 @@ class User(AbstractBaseUser,PermissionsMixin):
 class TimeSlot(models.Model):
     start_time = models.TimeField()
     end_time = models.TimeField()
+    date = models.DateField(null=True)
     is_booked = models.BooleanField(default=False)
+    
 
     def __str__(self):
         return f"{self.start_time} - {self.end_time}"
@@ -66,7 +68,7 @@ class Doctor(User):
     ]
     
     specialty = models.CharField(max_length=50, choices=SPECIALTY_CHOICES)
-    photo_url = models.URLField()
+    photo_url = models.CharField(max_length=300)
     clinic = models.ForeignKey(Clinic, on_delete=models.CASCADE)
     availability = models.ManyToManyField(TimeSlot, blank=True)
     
@@ -74,6 +76,7 @@ class Doctor(User):
     instagram_link = models.URLField(blank=True, null=True)
     twitter_link = models.URLField(blank=True, null=True)
     linkedin_link = models.URLField(blank=True, null=True)
+    fcm_token = models.CharField(max_length=255, null=True, blank=True)
 
 
     def __str__(self):
@@ -83,6 +86,7 @@ class Doctor(User):
 class Patient(User):
     address = models.TextField()
     date_of_birth = models.DateField()
+    fcm_token = models.CharField(max_length=255, null=True, blank=True)
 
     def __str__(self):
         return f"{self.first_name} {self.last_name}"   

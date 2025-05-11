@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 import os
 from pathlib import Path
 
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -26,7 +27,9 @@ SECRET_KEY = 'django-insecure-%q*)f4e)xb_v^ii(c)c))m=r3std!-399!0cyccxiw303j%y)#
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']  # allows all hosts
+FCM_SERVER_KEY = "votre_clef_secrete_FCM"
+
 
 
 # Application definition
@@ -42,7 +45,7 @@ INSTALLED_APPS = [
     'appointments',
     'prescriptions', 
     'django.contrib.sites',
-       'rest_framework',
+    'rest_framework',
     'rest_framework_simplejwt',
     'oauthlib',
     'social_django',
@@ -50,8 +53,9 @@ INSTALLED_APPS = [
     'allauth.account',
     'allauth.socialaccount',
     'allauth.socialaccount.providers.google',
-      'notifications',
+    'notifications',
     'django_cron', 
+    'channels',
 ]
 CRON_CLASSES = [
     'notifications.cron.SendRemindersCronJob',
@@ -172,3 +176,18 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+
+
+ASGI_APPLICATION = 'app.asgi.application'
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',  # Pour le développement
+        # Pour la production avec Redis:
+        # 'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        # 'CONFIG': {
+        #     'hosts': [('127.0.0.1', 6379)],
+        # },
+    },
+}
