@@ -84,20 +84,48 @@ class DoctorAppointmentsView(APIView):
         except Doctor.DoesNotExist:
             return Response({"error": "Doctor not found"}, status=status.HTTP_404_NOT_FOUND)
 
-class BookAppointmentView(APIView):
-    def post(self, request):
-        serializer = AppointmentCreateSerializer(data=request.data)
-        if serializer.is_valid():
-            # Save the appointment
-            appointment = serializer.save()
+@csrf_exempt
+def book_appointment(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            patient_id = data.get("patient_id")
+            doctor_id = data.get("doctor_id")
+            date = data.get("date")
+            time = data.get("time")
+
+            if not all([patient_id, doctor_id, date, time]):
+                return JsonResponse({"error": "Missing required fields"}, status=400)
+
+            patient = Patient.objects.get(id=patient_id)
+            doctor = Doctor.objects.get(id=doctor_id)
+
+            appointment = Appointment.objects.create(
+                patient=patient,
+                doctor=doctor,
+                date=date,
+                time=time,
+                status="Pending"
+            )
 
             # Send a reminder notification to the patient
-            message = f"Reminder: You have an appointment with Dr. {appointment.doctor.first_name} {appointment.doctor.last_name} on {appointment.date} at {appointment.time}."
-            send_notification_to_patient(appointment.patient, message)
+            message = f"Reminder: You have an appointment with Dr. {doctor.first_name} {doctor.last_name} on {date} at {time}."
+            send_notification_to_patient(patient, message)
 
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+            return JsonResponse({
+                "message": "Appointment booked successfully.",
+                "appointment_id": appointment.id,
+                "status": appointment.status
+            })
+
+        except Patient.DoesNotExist:
+            return JsonResponse({"error": "Invalid patient ID"}, status=404)
+        except Doctor.DoesNotExist:
+            return JsonResponse({"error": "Invalid doctor ID"}, status=404)
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "Invalid JSON format"}, status=400)
+
+    return JsonResponse({"error": "Invalid request method. Use POST."}, status=405)
 
 '''The doctor confirms an appointement with the call to this function'''
 @csrf_exempt

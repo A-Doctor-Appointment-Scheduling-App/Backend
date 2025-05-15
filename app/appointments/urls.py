@@ -8,7 +8,7 @@ urlpatterns = [
 
     path('patient/<int:patient_id>/appointments/', PatientAppointmentsView.as_view(), name='patient-appointments'),
     path('doctor/<int:doctor_id>/appointments/', DoctorAppointmentsView.as_view(), name='doctor-appointments'),
-    path('appointments/book/', BookAppointmentView.as_view(), name='book-appointment'),
+    path('book/', book_appointment, name='book_appointment'),
     path("<int:appointment_id>/confirm/", confirm_appointment_, name="confirm_appointment"),
     path("<int:appointment_id>/reject/", reject_appointment, name="reject_appointment"),
     path("<int:appointment_id>/complete/", complete_appointment, name="complete_appointment"),
