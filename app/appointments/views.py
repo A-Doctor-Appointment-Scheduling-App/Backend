@@ -108,9 +108,10 @@ def book_appointment(request):
                 status="Pending"
             )
 
-            # Send a reminder notification to the patient
             message = f"Reminder: You have an appointment with Dr. {doctor.first_name} {doctor.last_name} on {date} at {time}."
-            send_notification_to_patient(patient, message)
+            title = "Appointment Reminder"
+
+            send_notification_to_patient(patient, message, title=title)
 
             return JsonResponse({
                 "message": "Appointment booked successfully.",

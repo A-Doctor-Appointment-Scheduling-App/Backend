@@ -74,7 +74,7 @@ def doctor_list(request):
             "last_name": doctor.last_name,
             "specialty": doctor.specialty,
             "photo_url": doctor.photo_url,
-            "clinic": doctor.clinic,  # Assuming Clinic model has a name field
+            "clinic": doctor.clinic.name if doctor.clinic else None, 
         }
         for doctor in doctors
     ]
