@@ -2,6 +2,9 @@ from django.shortcuts import render
 from django.shortcuts import get_object_or_404
 from django.http import JsonResponse
 from .models import Appointment
+from django.db.models import Count
+from datetime import date
+from .serializers import AppointmentSerializer, AppointmentStatsSerializer
 
 
 from rest_framework.views import APIView
@@ -48,16 +51,25 @@ def scan_qr_code(request, appointment_id):
 
 def appointment_details(request, appointment_id):
     appointment = get_object_or_404(Appointment, id=appointment_id)
+    patient = appointment.patient  
+    doctor = appointment.doctor
+
     data = {
         "id": appointment.id,
-        "doctor": f"{appointment.doctor.first_name} {appointment.doctor.last_name}",
+        "doctor": f"{doctor.first_name} {doctor.last_name}",
+        "patient": {
+            "full_name": f"{patient.first_name} {patient.last_name}",
+            "email": patient.email,
+            "phone_number": patient.phone_number,
+            "address": patient.address,
+            "date_of_birth": patient.date_of_birth
+        },
         "date": appointment.date,
+        "time": appointment.time,
         "status": appointment.status,
         "qr_code": appointment.qr_code.url if appointment.qr_code else None,
     }
     return JsonResponse(data)
-
-
 
 
 class PatientAppointmentsView(APIView):
@@ -84,19 +96,51 @@ class DoctorAppointmentsView(APIView):
         except Doctor.DoesNotExist:
             return Response({"error": "Doctor not found"}, status=status.HTTP_404_NOT_FOUND)
 
-class BookAppointmentView(APIView):
-    def post(self, request):
-        serializer = AppointmentCreateSerializer(data=request.data)
-        if serializer.is_valid():
-            # Save the appointment
-            appointment = serializer.save()
+@csrf_exempt
+def book_appointment(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            patient_id = data.get("patient_id")
+            doctor_id = data.get("doctor_id")
+            date = data.get("date")
+            time = data.get("time")
+
+            if not all([patient_id, doctor_id, date, time]):
+                return JsonResponse({"error": "Missing required fields"}, status=400)
+
+            patient = Patient.objects.get(id=patient_id)
+            doctor = Doctor.objects.get(id=doctor_id)
+
+            appointment = Appointment.objects.create(
+                patient=patient,
+                doctor=doctor,
+                date=date,
+                time=time,
+                status="Pending"
+            )
 
             # Send a reminder notification to the patient
-            message = f"Reminder: You have an appointment with Dr. {appointment.doctor.first_name} {appointment.doctor.last_name} on {appointment.date} at {appointment.time}."
-            send_notification_to_patient(appointment.patient, message)
+            title = "Appointment reminder"
+            message = f"Reminder: You have an appointment with Dr. {doctor.first_name} {doctor.last_name} on {date} at {time}."
+            send_notification_to_patient(patient, message,title=title)
 
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return JsonResponse({
+                "message": "Appointment booked successfully.",
+                "appointment_id": appointment.id,
+                "status": appointment.status
+            })
+
+        except Patient.DoesNotExist:
+            return JsonResponse({"error": "Invalid patient ID"}, status=404)
+        except Doctor.DoesNotExist:
+            return JsonResponse({"error": "Invalid doctor ID"}, status=404)
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "Invalid JSON format"}, status=400)
+
+    return JsonResponse({"error": "Invalid request method. Use POST."}, status=405)
+    
+
     
 
 '''The doctor confirms an appointement with the call to this function'''
@@ -210,3 +254,70 @@ def reschedule_appointment(request, appointment_id, new_date, new_time):
         return JsonResponse({"message": "Appointment rescheduled successfully."})
 
     return JsonResponse({"error": "Invalid request method."}, status=405)
+
+
+
+def get_doctor_statistics(doctor_id):
+    try:
+        # Get the doctor object
+        doctor = Doctor.objects.get(id=doctor_id)
+        
+        # Total appointments today
+        total_appointments_today = Appointment.objects.filter(
+            doctor=doctor, 
+            date=date.today()
+        ).count()
+
+        # Upcoming appointment (next one)
+        upcoming_appointment = Appointment.objects.filter(
+            doctor=doctor,
+            date__gt=date.today(),  # Only appointments scheduled for after today
+        ).order_by('date', 'time').first()
+
+        # Completed appointments
+        completed_appointments = Appointment.objects.filter(
+            doctor=doctor,
+            status="Completed"
+        ).count()
+
+        # Number of patients attended (distinct patients)
+        patients_attended = Appointment.objects.filter(
+            doctor=doctor,
+            status="Completed"
+        ).values('patient').distinct().count()
+
+        # Pending appointment requests
+        pending_appointments = Appointment.objects.filter(
+            doctor=doctor,
+            status="Pending"
+        ).count()
+
+        # Return the statistics
+        statistics = {
+            "total_appointments_today": total_appointments_today,
+            "upcoming_appointment": upcoming_appointment,
+            "completed_appointments": completed_appointments,
+            "patients_attended": patients_attended,
+            "pending_appointments": pending_appointments
+        }
+
+        return statistics
+
+    except Doctor.DoesNotExist:
+        return {"error": "Doctor not found"}
+    
+
+
+class DoctorStatisticsView(APIView):
+    def get(self, request, doctor_id):
+        statistics = get_doctor_statistics(doctor_id)
+
+        if "error" in statistics:
+            return Response(statistics, status=status.HTTP_404_NOT_FOUND)
+
+        if statistics['upcoming_appointment']:
+            upcoming_appointment_data = AppointmentStatsSerializer(statistics['upcoming_appointment']).data
+            statistics['upcoming_appointment'] = upcoming_appointment_data
+
+
+        return Response(statistics, status=status.HTTP_200_OK)

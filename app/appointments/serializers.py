@@ -8,6 +8,15 @@ class AppointmentSerializer(serializers.ModelSerializer):
         model = Appointment
         fields = ['id', 'doctor', 'patient', 'date', 'time', 'status', 'qr_code']
 
+
+class AppointmentStatsSerializer(serializers.ModelSerializer):
+    patient_first_name = serializers.CharField(source='patient.first_name', read_only=True)
+    patient_last_name = serializers.CharField(source='patient.last_name', read_only=True)
+
+    class Meta:
+        model = Appointment
+        fields = ['id', 'doctor', 'patient', 'patient_first_name', 'patient_last_name', 'date', 'time', 'status', 'qr_code']
+
 class AppointmentCreateSerializer(serializers.ModelSerializer):
     doctor_id = serializers.PrimaryKeyRelatedField(queryset=Doctor.objects.all(), source='doctor')
     patient_id = serializers.PrimaryKeyRelatedField(queryset=Patient.objects.all(), source='patient')

@@ -74,7 +74,11 @@ def doctor_list(request):
             "last_name": doctor.last_name,
             "specialty": doctor.specialty,
             "photo_url": doctor.photo_url,
-            "clinic": doctor.clinic,  # Assuming Clinic model has a name field
+            "clinic": {
+                "name": doctor.clinic.name,
+                "address": doctor.clinic.address,
+                "location": doctor.clinic.location,
+            } if doctor.clinic else None
         }
         for doctor in doctors
     ]
@@ -87,10 +91,15 @@ def doctor_details(request, doctor_id):
         "id": doctor.id,
         "first_name": doctor.first_name,
         "last_name": doctor.last_name,
+        "email": doctor.email,
+        "phone_number": doctor.phone_number,
         "specialty": doctor.specialty,
         "photo_url": doctor.photo_url,
-        "clinic": doctor.clinic.name,
-        "availability": [str(slot) for slot in doctor.availability.all()],  # Assuming TimeSlot has a string representation
+        "clinic": {
+            "name": doctor.clinic.name,
+            "address": doctor.clinic.address,
+            "location": doctor.clinic.location,
+        } if doctor.clinic else None,
         "facebook_link": doctor.facebook_link,
         "instagram_link": doctor.instagram_link,
         "twitter_link": doctor.twitter_link,
