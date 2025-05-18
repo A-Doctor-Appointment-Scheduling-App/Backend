@@ -5,8 +5,10 @@ from .models import Appointment
 from django.db.models import Count
 from datetime import date
 from .serializers import AppointmentSerializer, AppointmentStatsSerializer
-
-
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
+import json
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -19,22 +21,6 @@ from django.views.decorators.csrf import csrf_exempt
 from notifications.views import send_notification_to_doctor,send_notification_to_patient
 
 
-
-
-def confirm_appointment(request, appointment_id):
-    """Doctor confirms the appointment and generates a QR code."""
-    appointment = get_object_or_404(Appointment, id=appointment_id)
-
-    if appointment.status != "Pending":
-        return JsonResponse({"error": "Appointment is already confirmed or cancelled"}, status=400)
-
-    appointment.status = "Pending"
-    appointment.save()
-
-    return JsonResponse({
-        "message": "Appointment confirmed",
-        "qr_code": appointment.qr_code.url if appointment.qr_code else None
-    })
 
 def scan_qr_code(request, appointment_id):
     """Doctor scans the QR code, updating the appointment status."""
@@ -149,28 +135,29 @@ def confirm_appointment_(request, appointment_id):
     if request.method == "POST":
         appointment = get_object_or_404(Appointment, id=appointment_id)
         appointment.status = "Confirmed"
-        appointment.save()
+        appointment.save()  # This will trigger the QR code generation
 
         notification_title = "Appointment Confirmed"
         notification_message = f"Your appointment with Dr. {appointment.doctor.first_name} {appointment.doctor.last_name} has been confirmed."
         
-        # Envoyer la notification avec titre
         send_notification_to_patient(
             appointment.patient, 
             notification_message,
             title=notification_title
         )
 
-
-        return JsonResponse({"message": "Appointment Confirmed successfully."})
+        return JsonResponse({
+            "message": "Appointment Confirmed successfully.",
+            "qr_code": appointment.qr_code.url if appointment.qr_code else None,
+            "qr_data": {  # Optionnel: renvoyer aussi les données en JSON
+                "appointment_id": appointment.id,
+                "doctor": f"{appointment.doctor.first_name} {appointment.doctor.last_name}",
+                "patient": f"{appointment.patient.first_name} {appointment.patient.last_name}",
+                "date": str(appointment.date),
+                "time": str(appointment.time)
+            }
+        })
     return JsonResponse({"error": "Invalid request method. Use POST."}, status=400)
-    
-
-'''The doctor rejects an appointement with the call to this function'''
-from django.views.decorators.csrf import csrf_exempt
-from django.http import JsonResponse
-from django.shortcuts import get_object_or_404
-import json
 
 @csrf_exempt
 def reject_appointment(request, appointment_id):
