@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from .models import Appointment
 from .serializers import AppointmentCreateSerializer  # Updated import
+from .serializers import AppointmentFullSerializer
 from users.models import Patient,Doctor
 from django.shortcuts import render,get_object_or_404
 from django.http import JsonResponse
@@ -63,11 +64,8 @@ def appointment_details(request, appointment_id):
 class PatientAppointmentsView(APIView):
     def get(self, request, patient_id):
         try:
-            # Fetch the patient object
             patient = Patient.objects.get(id=patient_id)
-            # Fetch all appointments for the patient
             appointments = Appointment.objects.filter(patient=patient)
-            # Serialize the appointments
             serializer = AppointmentCreateSerializer(appointments, many=True)  # Updated serializer
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Patient.DoesNotExist:
@@ -80,6 +78,26 @@ class DoctorAppointmentsView(APIView):
             doctor = Doctor.objects.get(id=doctor_id)
             appointments = Appointment.objects.filter(doctor=doctor)
             serializer = AppointmentCreateSerializer(appointments, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Doctor.DoesNotExist:
+            return Response({"error": "Doctor not found"}, status=status.HTTP_404_NOT_FOUND)
+
+class PatientAppointmentsFullView(APIView):
+    def get(self, request, patient_id):
+        try:
+            patient = Patient.objects.get(id=patient_id)
+            appointments = Appointment.objects.filter(patient=patient)
+            serializer = AppointmentFullSerializer(appointments, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Patient.DoesNotExist:
+            return Response({"error": "Patient not found"}, status=status.HTTP_404_NOT_FOUND)
+
+class DoctorAppointmentsFullView(APIView):
+    def get(self, request, doctor_id):
+        try:
+            doctor = Doctor.objects.get(id=doctor_id)
+            appointments = Appointment.objects.filter(doctor=doctor)
+            serializer = AppointmentFullSerializer(appointments, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Doctor.DoesNotExist:
             return Response({"error": "Doctor not found"}, status=status.HTTP_404_NOT_FOUND)
