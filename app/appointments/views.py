@@ -6,7 +6,7 @@ from django.core.files.storage import default_storage
 from .models import Appointment
 from django.db.models import Count
 from datetime import date
-from .serializers import AppointmentSerializer, AppointmentStatsSerializer, AppointmentFullSerializer
+from .serializers import AppointmentSerializer, AppointmentStatsSerializer
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
@@ -254,11 +254,11 @@ def cancel_appointment(request, appointment_id):
     if request.method == "POST":
         appointment = get_object_or_404(Appointment, id=appointment_id)
         appointment.status = "Cancelled"
+        appointment.save()
        
         notification_title = "Appointment cancelled"
 
         send_notification_to_doctor(appointment.doctor, f"Mr. {appointment.patient.first_name} {appointment.patient.last_name} cancelled his appointement.",notification_title)
-        appointment.save()
         return JsonResponse({"message": "Appointment cancelled successfully."})
 
 
