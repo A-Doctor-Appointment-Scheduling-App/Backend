@@ -24,3 +24,9 @@ class AppointmentCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Appointment
         fields = ['doctor_id', 'patient_id', 'date', 'time', 'status', 'qr_code']
+
+
+class AppointmentFullSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Appointment
+        fields = '__all__'

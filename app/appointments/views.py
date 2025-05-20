@@ -6,7 +6,7 @@ from django.core.files.storage import default_storage
 from .models import Appointment
 from django.db.models import Count
 from datetime import date
-from .serializers import AppointmentSerializer, AppointmentStatsSerializer
+from .serializers import AppointmentSerializer, AppointmentStatsSerializer, AppointmentFullSerializer
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
@@ -106,6 +106,26 @@ class DoctorAppointmentsView(APIView):
             doctor = Doctor.objects.get(id=doctor_id)
             appointments = Appointment.objects.filter(doctor=doctor)
             serializer = AppointmentCreateSerializer(appointments, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Doctor.DoesNotExist:
+            return Response({"error": "Doctor not found"}, status=status.HTTP_404_NOT_FOUND)
+
+class PatientAppointmentsFullView(APIView):
+    def get(self, request, patient_id):
+        try:
+            patient = Patient.objects.get(id=patient_id)
+            appointments = Appointment.objects.filter(patient=patient)
+            serializer = AppointmentFullSerializer(appointments, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Patient.DoesNotExist:
+            return Response({"error": "Patient not found"}, status=status.HTTP_404_NOT_FOUND)
+
+class DoctorAppointmentsFullView(APIView):
+    def get(self, request, doctor_id):
+        try:
+            doctor = Doctor.objects.get(id=doctor_id)
+            appointments = Appointment.objects.filter(doctor=doctor)
+            serializer = AppointmentFullSerializer(appointments, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Doctor.DoesNotExist:
             return Response({"error": "Doctor not found"}, status=status.HTTP_404_NOT_FOUND)
@@ -234,11 +254,11 @@ def cancel_appointment(request, appointment_id):
     if request.method == "POST":
         appointment = get_object_or_404(Appointment, id=appointment_id)
         appointment.status = "Cancelled"
-        appointment.save()
        
         notification_title = "Appointment cancelled"
 
         send_notification_to_doctor(appointment.doctor, f"Mr. {appointment.patient.first_name} {appointment.patient.last_name} cancelled his appointement.",notification_title)
+        appointment.save()
         return JsonResponse({"message": "Appointment cancelled successfully."})
 
 
