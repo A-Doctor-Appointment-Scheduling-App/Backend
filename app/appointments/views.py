@@ -6,7 +6,7 @@ from django.core.files.storage import default_storage
 from .models import Appointment
 from django.db.models import Count
 from datetime import date
-from .serializers import AppointmentSerializer, AppointmentStatsSerializer
+from .serializers import AppointmentSerializer, AppointmentStatsSerializer, AppointmentFullSerializer 
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
@@ -109,12 +109,14 @@ class DoctorAppointmentsView(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Doctor.DoesNotExist:
             return Response({"error": "Doctor not found"}, status=status.HTTP_404_NOT_FOUND)
-
 class PatientAppointmentsFullView(APIView):
     def get(self, request, patient_id):
         try:
+            # Verify patient exists
             patient = Patient.objects.get(id=patient_id)
+            # Get all appointments for this patient
             appointments = Appointment.objects.filter(patient=patient)
+            # Serialize with all fields
             serializer = AppointmentFullSerializer(appointments, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Patient.DoesNotExist:
@@ -123,13 +125,15 @@ class PatientAppointmentsFullView(APIView):
 class DoctorAppointmentsFullView(APIView):
     def get(self, request, doctor_id):
         try:
+            # Verify doctor exists
             doctor = Doctor.objects.get(id=doctor_id)
+            # Get all appointments for this doctor
             appointments = Appointment.objects.filter(doctor=doctor)
+            # Serialize with all fields
             serializer = AppointmentFullSerializer(appointments, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Doctor.DoesNotExist:
             return Response({"error": "Doctor not found"}, status=status.HTTP_404_NOT_FOUND)
-
 @csrf_exempt
 def book_appointment(request):
     if request.method == "POST":
