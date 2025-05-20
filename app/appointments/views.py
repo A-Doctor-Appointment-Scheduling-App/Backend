@@ -1,6 +1,8 @@
 from django.shortcuts import render
 from django.shortcuts import get_object_or_404
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import get_object_or_404
+from django.core.files.storage import default_storage
 from .models import Appointment
 from django.db.models import Count
 from datetime import date
@@ -21,12 +23,12 @@ from django.views.decorators.csrf import csrf_exempt
 from notifications.views import send_notification_to_doctor,send_notification_to_patient
 
 
-
+@csrf_exempt
 def scan_qr_code(request, appointment_id):
     """Doctor scans the QR code, updating the appointment status."""
     appointment = get_object_or_404(Appointment, id=appointment_id)
 
-    if appointment.status != "Pending":
+    if appointment.status != "Confirmed":
         return JsonResponse({"error": "Invalid QR code or appointment status"}, status=400)
 
     appointment.status = "Completed"
@@ -34,6 +36,32 @@ def scan_qr_code(request, appointment_id):
 
     return JsonResponse({"message": "Appointment completed successfully"})
 
+def get_qr_code(request, appointment_id):
+    """Retourne le QR code d'un rendez-vous"""
+    appointment = get_object_or_404(Appointment, id=appointment_id)
+    
+    if not appointment.qr_code:
+        return JsonResponse({"error": "QR code not available"}, status=404)
+    
+    qr_code_path = appointment.qr_code.path
+    if not default_storage.exists(qr_code_path):
+        return JsonResponse({"error": "QR code file not found"}, status=404)
+    
+    with default_storage.open(qr_code_path, 'rb') as f:
+        return HttpResponse(f.read(), content_type="image/png")
+    
+def appointment_qr_code(request, appointment_id):
+    appointment = get_object_or_404(Appointment, pk=appointment_id)
+    if not appointment.qr_code and appointment.status == "Confirmed":
+        appointment.generate_qr_code()
+        appointment.save()
+
+    if appointment.qr_code:
+        with open(appointment.qr_code.path, 'rb') as f:
+            return HttpResponse(f.read(), content_type="image/png")
+    else:
+        return HttpResponse("QR code not available for this appointment.", status=404)
+    
 
 def appointment_details(request, appointment_id):
     appointment = get_object_or_404(Appointment, id=appointment_id)

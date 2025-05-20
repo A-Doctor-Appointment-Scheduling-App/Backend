@@ -13,4 +13,5 @@ urlpatterns = [
     path("<int:appointment_id>/cancel/", cancel_appointment, name="cancel_appointment"),
     path("<int:appointment_id>/reschedule/<str:new_date>/<str:new_time>/", reschedule_appointment,name="reschedule_appointment"),
     path("doctor/<int:doctor_id>/statistics/", DoctorStatisticsView.as_view(), name='doctor-statistics'),
+    path('<int:appointment_id>/qr-code/', get_qr_code, name='get_qr_code'),
 ]
