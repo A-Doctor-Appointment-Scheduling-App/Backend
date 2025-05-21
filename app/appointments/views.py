@@ -1,3 +1,4 @@
+from .serializers import AppointmentSerializer, AppointmentStatsSerializer,AppointmentFullSerializer,PatientAppointmentStatsSerializer,ConsultedDoctorSerializer,AppointmentFullSerializer
 from django.shortcuts import render
 from django.shortcuts import get_object_or_404
 from django.http import HttpResponse, JsonResponse
@@ -6,7 +7,7 @@ from django.core.files.storage import default_storage
 from .models import Appointment
 from django.db.models import Count
 from datetime import date
-from .serializers import AppointmentSerializer, AppointmentStatsSerializer
+from .serializers import AppointmentSerializer, AppointmentStatsSerializer, AppointmentFullSerializer 
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
@@ -21,6 +22,7 @@ from django.shortcuts import render,get_object_or_404
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from notifications.views import send_notification_to_doctor,send_notification_to_patient
+from datetime import datetime
 
 
 @csrf_exempt
@@ -109,12 +111,14 @@ class DoctorAppointmentsView(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Doctor.DoesNotExist:
             return Response({"error": "Doctor not found"}, status=status.HTTP_404_NOT_FOUND)
-
 class PatientAppointmentsFullView(APIView):
     def get(self, request, patient_id):
         try:
+            # Verify patient exists
             patient = Patient.objects.get(id=patient_id)
+            # Get all appointments for this patient
             appointments = Appointment.objects.filter(patient=patient)
+            # Serialize with all fields
             serializer = AppointmentFullSerializer(appointments, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Patient.DoesNotExist:
@@ -123,13 +127,15 @@ class PatientAppointmentsFullView(APIView):
 class DoctorAppointmentsFullView(APIView):
     def get(self, request, doctor_id):
         try:
+            # Verify doctor exists
             doctor = Doctor.objects.get(id=doctor_id)
+            # Get all appointments for this doctor
             appointments = Appointment.objects.filter(doctor=doctor)
+            # Serialize with all fields
             serializer = AppointmentFullSerializer(appointments, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Doctor.DoesNotExist:
             return Response({"error": "Doctor not found"}, status=status.HTTP_404_NOT_FOUND)
-
 @csrf_exempt
 def book_appointment(request):
     if request.method == "POST":
@@ -354,5 +360,84 @@ class DoctorStatisticsView(APIView):
             upcoming_appointment_data = AppointmentStatsSerializer(statistics['upcoming_appointment']).data
             statistics['upcoming_appointment'] = upcoming_appointment_data
 
+
+        return Response(statistics, status=status.HTTP_200_OK)
+    
+
+def get_patient_statistics(patient_id):
+    try:
+        # Get the patient object
+        patient = Patient.objects.get(id=patient_id)
+
+        # Total appointments today
+        total_appointments_today = Appointment.objects.filter(
+            patient=patient, 
+            date=date.today()
+        ).count()
+
+        now = datetime.now().time()
+
+        upcoming_appointment = Appointment.objects.filter(
+            patient=patient,
+            date=date.today(),
+            time__gt=now,
+            status="Confirmed"
+        ).order_by('date', 'time').first()
+
+        # If no appointment left today, check future days
+        if not upcoming_appointment:
+            upcoming_appointment = Appointment.objects.filter(
+                patient=patient,
+                date__gt=date.today(),
+                status="Confirmed"
+            ).order_by('date', 'time').first()
+
+        # Completed appointments
+        completed_appointments = Appointment.objects.filter(
+            patient=patient,
+            status="Completed"
+        ).count()
+
+        consulted_doctors = Doctor.objects.filter(
+            appointment__patient=patient,
+            appointment__status="Completed"
+        ).distinct()
+
+        # Pending appointment requests
+        pending_appointments = Appointment.objects.filter(
+            patient=patient,
+            status="Pending"
+        ).count()
+
+        # Return statistics
+        statistics = {
+            "total_appointments_today": total_appointments_today,
+            "upcoming_appointment": upcoming_appointment,
+            "completed_appointments": completed_appointments,
+            "doctors_consulted": consulted_doctors,
+            "pending_appointments": pending_appointments
+        }
+
+        return statistics
+
+    except Patient.DoesNotExist:
+        return {"error": "Patient not found"}
+
+
+class PatientStatisticsView(APIView):
+    def get(self, request, patient_id):
+        statistics = get_patient_statistics(patient_id)
+
+        if "error" in statistics:
+            return Response(statistics, status=status.HTTP_404_NOT_FOUND)
+
+        if statistics['upcoming_appointment']:
+            statistics['upcoming_appointment'] = PatientAppointmentStatsSerializer(
+                statistics['upcoming_appointment']
+            ).data
+
+        statistics['doctors_consulted'] = ConsultedDoctorSerializer(
+            statistics['doctors_consulted'], many=True
+        ).data
 
         return Response(statistics, status=status.HTTP_200_OK)
