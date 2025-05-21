@@ -1,7 +1,8 @@
 # appointments/serializers.py
 from rest_framework import serializers
 from .models import Appointment
-from users.models import Doctor, Patient  # Import the Doctor and Patient models
+from users.models import Doctor, Patient
+from prescriptions.models import Prescription  # Import the Doctor and Patient models
 
 class AppointmentSerializer(serializers.ModelSerializer):
     class Meta:
@@ -29,11 +30,12 @@ class AppointmentCreateSerializer(serializers.ModelSerializer):
 class AppointmentFullSerializer(serializers.ModelSerializer):
     patient = serializers.SerializerMethodField()
     doctor = serializers.SerializerMethodField()
+    has_prescription = serializers.SerializerMethodField()
 
 
     class Meta:
         model = Appointment
-        fields = ['id', 'doctor', 'patient', 'date', 'time', 'status', 'qr_code']
+        fields = ['id', 'doctor', 'patient', 'date', 'time', 'status', 'qr_code','has_prescription']
 
     def get_patient(self, obj):
         return {
@@ -48,6 +50,9 @@ class AppointmentFullSerializer(serializers.ModelSerializer):
             "speciality": f"{obj.doctor.specialty}",
             "profile_image": f"{obj.doctor.photo_url}",
         }
+    
+    def get_has_prescription(self, obj):
+        return Prescription.objects.filter(appointment=obj).exists()
 
     
 

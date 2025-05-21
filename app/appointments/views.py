@@ -111,6 +111,8 @@ class DoctorAppointmentsView(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Doctor.DoesNotExist:
             return Response({"error": "Doctor not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        
 class PatientAppointmentsFullView(APIView):
     def get(self, request, patient_id):
         try:

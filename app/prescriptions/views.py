@@ -392,6 +392,16 @@ def download_prescription_pdf(request, pk):
         return FileResponse(buffer, as_attachment=True, filename=f'prescription_{pk}.pdf')
     except Prescription.DoesNotExist:
         return Response({'error': 'Prescription not found'}, status=status.HTTP_404_NOT_FOUND)
+    
+
+@api_view(['GET'])
+def get_prescription_by_appointment_id(request, appointment_id):
+    try:
+        prescription = Prescription.objects.get(appointment_id=appointment_id)
+        serializer = PrescriptionSerializer(prescription)
+        return Response(serializer.data)
+    except Prescription.DoesNotExist:
+        return Response({'error': 'Prescription not found'}, status=status.HTTP_404_NOT_FOUND)
 
 @api_view(['GET'])
 def get_prescriptions_by_doctor_and_patient(request, doctor_id, patient_id):
