@@ -8,4 +8,5 @@ path('<int:pk>/download/', download_prescription_pdf, name='download-prescriptio
 path('doctor/<int:doctor_id>/patient/<int:patient_id>/', get_prescriptions_by_doctor_and_patient, name='get-prescriptions-by-doctor-and-patient'),
 path('doctor/<int:doctor_id>/prescriptions/', DoctorPrescriptionsView.as_view(), name='doctor_prescriptions'),
 path('patient/<int:patient_id>/prescriptions/', PatientPrescriptionsView.as_view(), name='patient_prescriptions'),
+path('appointment/<int:appointment_id>/', get_prescription_by_appointment_id, name='get-prescription-by-appointment-id'),
 ]

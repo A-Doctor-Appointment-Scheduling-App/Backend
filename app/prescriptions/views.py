@@ -381,7 +381,14 @@ def generate_prescription_pdf(prescription_id):
     # File position to the beginning of the buffer
     buffer.seek(0)
     return buffer
-
+@api_view(['GET'])
+def get_prescription_by_appointment_id(request, appointment_id):
+    try:
+        prescription = Prescription.objects.get(appointment_id=appointment_id)
+        serializer = PrescriptionSerializer(prescription)
+        return Response(serializer.data)
+    except Prescription.DoesNotExist:
+        return Response({'error': 'Prescription not found'}, status=status.HTTP_404_NOT_FOUND)
 @api_view(['GET'])
 def download_prescription_pdf(request, pk):
     try:

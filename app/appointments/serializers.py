@@ -29,4 +29,10 @@ class AppointmentCreateSerializer(serializers.ModelSerializer):
 class AppointmentFullSerializer(serializers.ModelSerializer):
     class Meta:
         model = Appointment
-        fields = '__all__'
+        fields = ['id', 'doctor_id', 'patient_id', 'date', 'time', 'status', 'qr_code']  
+    def get_prescription_id(self, obj):
+        try:
+            prescription = Prescription.objects.get(appointment=obj)
+            return prescription.id
+        except Prescription.DoesNotExist:
+            return None    
