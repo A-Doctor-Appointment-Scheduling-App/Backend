@@ -136,6 +136,8 @@ class DoctorAppointmentsFullView(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Doctor.DoesNotExist:
             return Response({"error": "Doctor not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+'''The patient books an appointement with the call to this function'''
 @csrf_exempt
 def book_appointment(request):
     if request.method == "POST":

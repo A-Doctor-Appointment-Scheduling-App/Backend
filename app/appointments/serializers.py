@@ -27,9 +27,17 @@ class AppointmentCreateSerializer(serializers.ModelSerializer):
 
 
 class AppointmentFullSerializer(serializers.ModelSerializer):
+    patient = serializers.SerializerMethodField()
+
     class Meta:
         model = Appointment
-        fields = '__all__'
+        fields = ['id', 'doctor', 'patient', 'date', 'time', 'status', 'qr_code']
+
+    def get_patient(self, obj):
+        return {
+            "id": obj.patient.id,
+            "full_name": f"{obj.patient.first_name} {obj.patient.last_name}",
+        }
 
     
 
