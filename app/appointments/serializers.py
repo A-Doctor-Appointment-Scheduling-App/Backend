@@ -28,6 +28,8 @@ class AppointmentCreateSerializer(serializers.ModelSerializer):
 
 class AppointmentFullSerializer(serializers.ModelSerializer):
     patient = serializers.SerializerMethodField()
+    doctor = serializers.SerializerMethodField()
+
 
     class Meta:
         model = Appointment
@@ -37,6 +39,14 @@ class AppointmentFullSerializer(serializers.ModelSerializer):
         return {
             "id": obj.patient.id,
             "full_name": f"{obj.patient.first_name} {obj.patient.last_name}",
+        }
+    
+    def get_doctor(self, obj):
+        return {
+            "id": obj.doctor.id,
+            "full_name": f"{obj.doctor.first_name} {obj.doctor.last_name}",
+            "speciality": f"{obj.doctor.specialty}",
+            "profile_image": f"{obj.doctor.photo_url}",
         }
 
     

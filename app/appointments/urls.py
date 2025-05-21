@@ -17,5 +17,4 @@ urlpatterns = [
     path('<int:appointment_id>/qr-code/', get_qr_code, name='get_qr_code'),
     path('patient/<int:patient_id>/appointments/full/', PatientAppointmentsFullView.as_view(), name='patient-appointments-full'),
     path('doctor/<int:doctor_id>/appointments/full/', DoctorAppointmentsFullView.as_view(), name='doctor-appointments-full'),
-
 ]
