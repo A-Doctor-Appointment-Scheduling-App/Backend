@@ -10,8 +10,9 @@ from django.shortcuts import render
 from django.shortcuts import render
 from django.shortcuts import get_object_or_404
 from django.http import JsonResponse
-from .models import Doctor
-
+from .models import Doctor, TimeSlot
+from time import time
+from datetime import date
 @api_view(['POST'])
 def doctor_register_view(request):
     serializer = DoctorRegistrationSerializer(data=request.data)
@@ -87,6 +88,18 @@ def doctor_list(request):
 
 def doctor_details(request, doctor_id):
     doctor = get_object_or_404(Doctor, id=doctor_id)
+
+    timeslots = []
+    for slot in doctor.availability.all():
+        timeslots.append({
+            "id": slot.id,
+            "start_time": slot.start_time.strftime("%H:%M:%S"),
+            "end_time": slot.end_time.strftime("%H:%M:%S"),
+            "date": slot.date.strftime("%Y-%m-%d") if slot.date else None,
+            "is_booked": slot.is_booked
+        })
+
+
     data = {
         "id": doctor.id,
         "first_name": doctor.first_name,
@@ -104,6 +117,6 @@ def doctor_details(request, doctor_id):
         "instagram_link": doctor.instagram_link,
         "twitter_link": doctor.twitter_link,
         "linkedin_link": doctor.linkedin_link,
+        "timeslots": timeslots
     }
     return JsonResponse(data)
-

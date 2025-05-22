@@ -275,28 +275,38 @@ def cancel_appointment(request, appointment_id):
 '''The patient reschedules an appointement with the call to this function'''
 # appointments/views.py
 @csrf_exempt
-def reschedule_appointment(request, appointment_id, new_date, new_time):
+def reschedule_appointment(request, appointment_id):
     if request.method == "POST":
-        appointment = get_object_or_404(Appointment, id=appointment_id)
+        try:
+            data = json.loads(request.body)
+            new_date = data.get("new_date")
+            new_time = data.get("new_time")
 
-        if not new_date and not new_time:
-            return JsonResponse({"error": "Provide at least a new date or time."}, status=400)
+            if not new_date and not new_time:
+                return JsonResponse({"error": "Provide at least a new date or time."}, status=400)
 
-        if new_date:
-            appointment.date = new_date
-        if new_time:
-            appointment.time = new_time
+            appointment = get_object_or_404(Appointment, id=appointment_id)
 
-        appointment.status = "Pending"  # Needs to be reconfirmed by the doctor
-        appointment.save()
+            if new_date:
+                appointment.date = new_date
+            if new_time:
+                appointment.time = new_time
 
+            appointment.status = "Pending"  # Needs to be reconfirmed by the doctor
+            appointment.save()
 
-        notification_title = "Appointment rescheduling demand"
-        message = f"The appointment with {appointment.patient.first_name} {appointment.patient.last_name} has been rescheduled to {appointment.date} at {appointment.time}. Please review and confirm the new schedule."
+            notification_title = "Appointment rescheduling demand"
+            message = (
+                f"The appointment with {appointment.patient.first_name} "
+                f"{appointment.patient.last_name} has been rescheduled to "
+                f"{appointment.date} at {appointment.time}. Please review and confirm."
+            )
+            send_notification_to_doctor(appointment.doctor, message, notification_title)
 
-        send_notification_to_doctor(appointment.doctor,message,notification_title)
-        
-        return JsonResponse({"message": "Appointment rescheduled successfully."})
+            return JsonResponse({"message": "Appointment rescheduled successfully."})
+
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "Invalid JSON."}, status=400)
 
     return JsonResponse({"error": "Invalid request method."}, status=405)
 
