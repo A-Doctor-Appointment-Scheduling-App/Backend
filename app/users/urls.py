@@ -9,4 +9,7 @@ urlpatterns = [
     path('dashboard/', dashboard, name='dashboard'),
     path('doctors/', doctor_list, name='doctor_list'),
     path('doctors/<int:doctor_id>/', doctor_details, name='doctor_details'),
+    path('patients/<int:patient_id>/', get_patient_details, name='get-patient-details'),
+    path('login/google/', google_login, name='google-login'),
+
 ]

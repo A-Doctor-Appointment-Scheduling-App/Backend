@@ -13,6 +13,8 @@ from django.http import JsonResponse
 from .models import Doctor, TimeSlot
 from time import time
 from datetime import date
+GOOGLE_TOKEN_INFO_URL = 'https://oauth2.googleapis.com/tokeninfo'
+import requests
 @api_view(['POST'])
 def doctor_register_view(request):
     serializer = DoctorRegistrationSerializer(data=request.data)
@@ -120,3 +122,58 @@ def doctor_details(request, doctor_id):
         "timeslots": timeslots
     }
     return JsonResponse(data)
+
+
+from .serializers import PatientSerializer
+from .models import Patient
+
+@api_view(['GET'])
+def get_patient_details(request, patient_id):
+    try:
+        patient = Patient.objects.get(id=patient_id)
+        serializer = PatientSerializer(patient)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    except Patient.DoesNotExist:
+        return Response({"error": "Patient not found"}, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(['POST'])
+def google_login(request):
+    token = request.data.get('id_token')
+    if not token:
+        return Response({'error': 'Token not provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Verify the token with Google
+    resp = requests.get(GOOGLE_TOKEN_INFO_URL, params={'id_token': token})
+    if resp.status_code != 200:
+        return Response({'error': 'Invalid token'}, status=status.HTTP_400_BAD_REQUEST)
+    data = resp.json()
+
+    email = data.get('email')
+    if not email:
+        return Response({'error': 'Email not provided by Google'}, status=status.HTTP_400_BAD_REQUEST)
+
+    first_name = data.get('given_name', '')
+    last_name = data.get('family_name', '')
+
+    try:
+        user = Patient.objects.get(email=email)
+    except Patient.DoesNotExist:
+        # Création utilisateur (signup) en tant que Patient
+        user = Patient.objects.create_user(
+            email=email,
+            first_name=first_name,
+            last_name=last_name,
+            phone_number=f"google_{email}",  # Dummy unique phone
+            address="",  # Default empty address (you can prompt user to fill later)
+            date_of_birth="2000-01-01",  # Default date, change as needed
+            password=Patient.objects.make_random_password()
+        )
+
+    refresh = RefreshToken.for_user(user)
+    role = 'patient'
+    return Response({
+        'refresh': str(refresh),
+        'access': str(refresh.access_token),
+        'role': role
+    })

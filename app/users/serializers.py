@@ -33,3 +33,9 @@ class ClinicSerializer(serializers.ModelSerializer):
     class Meta:
         model = Clinic
         fields = ['name', 'address', 'location']
+
+
+class PatientSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Patient
+        fields = ['id', 'first_name', 'last_name', 'email', 'phone_number', 'address', 'date_of_birth']
